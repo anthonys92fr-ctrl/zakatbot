@@ -112,11 +112,13 @@ systemctl enable beam-lab
 
 echo "==> Fichier .env (créé s'il manque, avec un mot de passe admin généré et TRUST_PROXY=1)"
 if [ ! -f $APP_DIR/.env ]; then
-  ADMIN_PW="$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 24)"
+  ADMIN_PW="$(openssl rand -base64 36 | tr -dc 'A-Za-z0-9' | cut -c1-24)"   # (pas de SIGPIPE avec pipefail)
   cat > $APP_DIR/.env <<ENV
 PORT=$PORT
 TRUST_PROXY=1
 ADMIN_PASSWORD=$ADMIN_PW
+# Mot de passe demandé aux visiteurs du chatbot (vide = accès libre) ; modifiable ensuite dans l'admin
+ACCESS_PASSWORD=
 LLM_BASE_URL=
 LLM_MODEL=
 LLM_API_KEY=

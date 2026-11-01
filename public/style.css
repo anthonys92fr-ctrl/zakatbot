@@ -408,3 +408,4 @@ a.chip { text-decoration: none; cursor: pointer; transition: transform .15s var(
 a.chip:hover { transform: translateY(-1px); box-shadow: 0 8px 18px -12px var(--lane); border-color: var(--lane); }
 a.cite { text-decoration: none; cursor: pointer; }
 a.cite:hover { background: color-mix(in srgb, var(--lane) 28%, transparent); }
+.hint a { color: var(--muted); text-decoration: underline; } .hint a:hover { color: var(--text); }

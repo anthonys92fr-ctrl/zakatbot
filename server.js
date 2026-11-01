@@ -73,7 +73,10 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json({ limit: "512kb" }));
-app.use(express.static(path.join(__dirname, "public"), { index: "index.html", etag: true, maxAge: "1h" }));
+app.use(express.static(path.join(__dirname, "public"), {
+  index: "index.html", etag: true, maxAge: "1h",
+  setHeaders: (res, filePath) => { if (/\.html$/.test(filePath)) res.setHeader("Cache-Control", "no-cache"); }, // pages toujours revalidées, assets en cache 1 h
+}));
 
 /** Comparaison à temps constant de deux chaînes. */
 function safeEqual(a, b) {

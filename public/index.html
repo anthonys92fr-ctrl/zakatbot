@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ZakatBot</title>
+  <meta name="description" content="ZakatBot compare en direct trois façons de répondre à vos questions sur la zakat : le modèle seul, le RAG et le RAG + Graph RAG, puis un juge LLM analyse la qualité des réponses." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Amiri:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <!-- Fond : motif géométrique islamique + aurore -->
+  <svg class="pattern" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <pattern id="girih" width="120" height="120" patternUnits="userSpaceOnUse">
+        <g fill="none" stroke="currentColor" stroke-width="1">
+          <!-- étoile à 8 branches (rub el hizb) -->
+          <path d="M60 10 L74 46 L110 60 L74 74 L60 110 L46 74 L10 60 L46 46 Z" />
+          <rect x="31.7" y="31.7" width="56.6" height="56.6" transform="rotate(45 60 60)" />
+          <rect x="31.7" y="31.7" width="56.6" height="56.6" />
+          <circle cx="60" cy="60" r="6" />
+          <!-- croix de liaison entre étoiles -->
+          <path d="M0 60 L10 60 M110 60 L120 60 M60 0 L60 10 M60 110 L60 120" />
+          <path d="M0 0 L18 18 M120 0 L102 18 M0 120 L18 102 M120 120 L102 102" />
+        </g>
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#girih)" />
+  </svg>
+  <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+
+  <header class="top">
+    <div class="brand">
+      <div class="emblem" aria-hidden="true">
+        <svg viewBox="0 0 100 100" width="52" height="52">
+          <defs>
+            <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#f3d27a"/><stop offset=".5" stop-color="#c9a227"/><stop offset="1" stop-color="#8a6a12"/>
+            </linearGradient>
+          </defs>
+          <path d="M50 4 L62 38 L96 50 L62 62 L50 96 L38 62 L4 50 L38 38 Z" fill="url(#gold)" opacity=".95"/>
+          <path d="M50 18 L58 42 L82 50 L58 58 L50 82 L42 58 L18 50 L42 42 Z" fill="var(--panel-solid)"/>
+          <path d="M63 36 a17 17 0 1 0 0 28 a13 13 0 1 1 0 -28 z" fill="url(#gold)"/>
+          <circle cx="68" cy="40" r="3" fill="url(#gold)"/>
+        </svg>
+      </div>
+      <div>
+        <h1>ZakatBot <span class="arabic" lang="ar">زكاة</span></h1>
+        <p class="sub">Comprendre, calculer et donner la zakat — trois moteurs, un juge.</p>
+      </div>
+    </div>
+    <div class="status" id="status" role="status">
+      <span class="pill" id="pillModel"><i class="led"></i>connexion…</span>
+      <span class="pill" id="pillIndex">index : —</span>
+      <span class="pill" id="pillGraph">graphe : —</span>
+    </div>
+    <div class="actions">
+      <button class="ghost" id="toggleGraph" type="button" aria-expanded="false" aria-controls="graphviz">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7 7l4 9M17 7l-4 9M7.5 6h9"/></svg>
+        Graphe
+      </button>
+      <a class="ghost" href="/admin" title="Administration : documents, réindexation, réglages">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        Admin
+      </a>
+      <button class="ghost" id="clear" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+        Effacer
+      </button>
+    </div>
+  </header>
+
+  <main class="lab">
+    <section class="hero" id="hero">
+      <div class="hero-ornament" aria-hidden="true"></div>
+      <p class="hero-kicker">Troisième pilier de l'islam</p>
+      <h2 class="hero-title">Posez votre question sur la zakat</h2>
+      <p class="hero-text">Nisab, hawl, calcul sur l'épargne, l'or, les actions ou l'entreprise, zakat al-fitr, bénéficiaires, écoles juridiques, pratique en France : la même question est envoyée à trois moteurs, puis un juge compare les réponses.</p>
+      <div class="suggestions" id="suggestions">
+        <button type="button" class="sugg">Quel est le nisab aujourd'hui et comment le choisir, or ou argent ?</button>
+        <button type="button" class="sugg">J'ai 15 000 € d'épargne et un crédit immobilier : comment calculer ma zakat ?</button>
+        <button type="button" class="sugg">Les bijoux en or de ma femme sont-ils soumis à la zakat ?</button>
+        <button type="button" class="sugg">À qui peut-on donner la zakat, et à qui ne peut-on pas ?</button>
+        <button type="button" class="sugg">Quel est le montant de la zakat al-fitr et quand la verser ?</button>
+        <button type="button" class="sugg">La zakat versée à une association en France donne-t-elle droit à une réduction d'impôt ?</button>
+      </div>
+    </section>
+
+
+    <section class="arena" id="arena">
+      <article class="lane" data-mode="llm" style="--lane: var(--c-llm)">
+        <header class="lane-head">
+          <div class="lane-title"><span class="orb"></span><h2>LLM seul</h2><span class="tag">A</span></div>
+          <div class="metrics">
+            <span class="metric" title="Temps jusqu'au premier token"><b data-m="first">—</b> 1er token</span>
+            <span class="metric" title="Durée totale"><b data-m="total">—</b> total</span>
+            <span class="metric" title="Tokens de cette réponse (prompt + réponse)"><b data-m="tokens">—</b> tokens</span>
+          </div>
+        </header>
+        <p class="lane-desc">Beam répond uniquement avec ses connaissances internes.</p>
+        <div class="thread" data-thread></div>
+      </article>
+
+      <article class="lane" data-mode="rag" style="--lane: var(--c-rag)">
+        <header class="lane-head">
+          <div class="lane-title"><span class="orb"></span><h2>RAG</h2><span class="tag">B</span></div>
+          <div class="metrics">
+            <span class="metric" title="Temps de recherche"><b data-m="ctx">—</b> recherche</span>
+            <span class="metric" title="Temps jusqu'au premier token"><b data-m="first">—</b> 1er token</span>
+            <span class="metric" title="Durée totale"><b data-m="total">—</b> total</span>
+            <span class="metric" title="Tokens de cette réponse (prompt + réponse)"><b data-m="tokens">—</b> tokens</span>
+          </div>
+        </header>
+        <p class="lane-desc">Recherche hybride BM25 + vecteurs dans les fiches et les PDF, passages injectés dans le prompt.</p>
+        <div class="thread" data-thread></div>
+      </article>
+
+      <article class="lane" data-mode="graph" style="--lane: var(--c-graph)">
+        <header class="lane-head">
+          <div class="lane-title"><span class="orb"></span><h2>RAG + Graph RAG</h2><span class="tag">C</span></div>
+          <div class="metrics">
+            <span class="metric" title="Temps de recherche"><b data-m="ctx">—</b> recherche</span>
+            <span class="metric" title="Temps jusqu'au premier token"><b data-m="first">—</b> 1er token</span>
+            <span class="metric" title="Durée totale"><b data-m="total">—</b> total</span>
+            <span class="metric" title="Tokens de cette réponse (prompt + réponse)"><b data-m="tokens">—</b> tokens</span>
+          </div>
+        </header>
+        <p class="lane-desc">Passages + sous-graphe d'entités et relations, pour raisonner à travers plusieurs sources.</p>
+        <div class="thread" data-thread></div>
+      </article>
+    </section>
+
+
+    <section class="judge" id="judge" hidden>
+      <header class="judge-head">
+        <div>
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 7l7-4 7 4M5 7l-3 7a4 4 0 0 0 6 0l-3-7M19 7l-3 7a4 4 0 0 0 6 0l-3-7M8 21h8"/></svg>
+            Juge LLM
+          </h2>
+          <p class="sub">Beam évalue les trois réponses sur quatre critères et explique ce qui s'est passé.</p>
+        </div>
+        <div class="judge-state" id="judgeState"></div>
+      </header>
+      <div class="judge-body" id="judgeBody"></div>
+    </section>
+
+    <section class="graphviz" id="graphviz" hidden>
+      <header class="gv-head">
+        <div>
+          <h2>Graphe de connaissances</h2>
+          <p class="sub">Documents indexés (carrés) et entités extraites par Beam (ronds), reliés par les mentions et les relations. Survolez un nœud ; les entités utilisées par la dernière réponse C sont mises en avant.</p>
+        </div>
+        <div class="gv-tools">
+          <input id="gvSearch" type="search" placeholder="Filtrer une entité ou un fichier…" aria-label="Filtrer le graphe" />
+          <span class="gv-legend"><i class="sq"></i>document <i class="dot"></i>entité <i class="line rel"></i>relation <i class="line men"></i>mention</span>
+        </div>
+      </header>
+      <div class="gv-stage">
+        <canvas id="gvCanvas" aria-label="Visualisation du graphe de connaissances" role="img"></canvas>
+        <div class="gv-tip" id="gvTip" hidden></div>
+        <p class="gv-empty" id="gvEmpty" hidden>Aucun graphe : lance <code>npm run index</code> avec ta clé Reflection pour l'extraire.</p>
+      </div>
+    </section>
+  </main>
+
+  <form class="composer" id="form" autocomplete="off">
+    <div class="composer-inner">
+      <label class="sr-only" for="input">Ta question</label>
+      <textarea id="input" rows="1" placeholder="Pose ta question sur la zakat… les trois colonnes répondent en même temps" required></textarea>
+      <div class="composer-right">
+        <label class="toggle" title="Lancer le juge après chaque réponse">
+          <input type="checkbox" id="autoJudge" checked />
+          <span>Juge auto</span>
+        </label>
+        <button id="send" type="submit" aria-label="Envoyer">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4z"/></svg>
+        </button>
+      </div>
+    </div>
+    <p class="hint">Entrée pour envoyer · Maj+Entrée pour une nouvelle ligne · Information générale, pas un avis religieux personnalisé</p>
+  </form>
+
+  <dialog id="pwdDialog">
+    <form method="dialog" id="pwdForm">
+      <h2>Accès protégé</h2>
+      <p>Entre le mot de passe pour utiliser ZakatBot.</p>
+      <label class="sr-only" for="pwd">Mot de passe</label>
+      <input id="pwd" type="password" placeholder="Mot de passe" required />
+      <button type="submit">Valider</button>
+    </form>
+  </dialog>
+
+  <template id="tpl-user"><div class="msg user"><div class="bubble"></div></div></template>
+  <template id="tpl-assistant">
+    <div class="msg assistant">
+      <div class="sources" hidden></div>
+      <div class="graphbox" hidden></div>
+      <div class="bubble"><span class="thinking"><i></i><i></i><i></i></span></div>
+    </div>
+  </template>
+
+  <script src="/graph.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

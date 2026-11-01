@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ZakatBot · Admin</title>
+  <meta name="robots" content="noindex" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/admin.css" />
+</head>
+<body class="admin-body">
+  <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+
+  <header class="top">
+    <div class="brand">
+      <a class="back" href="/" title="Retour au chatbot" aria-label="Retour au chatbot">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </a>
+      <div>
+        <h1>Administration <span class="arabic" lang="ar">زكاة</span></h1>
+        <p class="sub">Documents du RAG, réindexation, réglages et statistiques de ZakatBot.</p>
+      </div>
+    </div>
+    <div class="status" id="status" role="status">
+      <span class="pill" id="pillIndex"><i class="led"></i>index : —</span>
+      <span class="pill" id="pillGraph">graphe : —</span>
+      <span class="pill" id="pillUptime">serveur : —</span>
+    </div>
+    <nav class="tabs" aria-label="Sections">
+      <button class="tab active" data-tab="docs" type="button">Documents</button>
+      <button class="tab" data-tab="index" type="button">Réindexation</button>
+      <button class="tab" data-tab="settings" type="button">Réglages</button>
+      <button class="tab" data-tab="stats" type="button">Statistiques</button>
+    </nav>
+  </header>
+
+  <main class="admin">
+    <!-- ===== Documents ===== -->
+    <section class="panel" data-panel="docs">
+      <div class="panel-head">
+        <div>
+          <h2>Documents de la base</h2>
+          <p class="sub">Fichiers <code>.md</code>, <code>.txt</code> et <code>.pdf</code> du dossier <code>docs/</code>. Après un ajout ou une suppression, lance une réindexation.</p>
+        </div>
+        <span class="badge" id="staleBadge" hidden>index à reconstruire</span>
+      </div>
+
+      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Déposer des fichiers ou cliquer pour choisir">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M6 10l6-6 6 6"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+        <div>
+          <b>Glisse des fichiers ici</b> ou clique pour choisir
+          <div class="dz-hint">md, txt, pdf · 40 Mo max par fichier · sous-dossier : <input id="folder" type="text" placeholder="(racine)" aria-label="Sous-dossier de destination" /></div>
+        </div>
+        <input id="fileInput" type="file" multiple accept=".md,.txt,.pdf" hidden />
+      </div>
+      <ul class="uploads" id="uploads"></ul>
+
+      <details class="paste">
+        <summary>Ou coller un texte comme nouveau document</summary>
+        <div class="paste-form">
+          <input id="pasteName" type="text" placeholder="nom-du-document.md" aria-label="Nom du fichier" />
+          <textarea id="pasteText" rows="6" placeholder="# Titre&#10;&#10;Contenu en Markdown ou texte brut…" aria-label="Contenu"></textarea>
+          <button class="btn" id="pasteBtn" type="button">Ajouter ce texte</button>
+        </div>
+      </details>
+
+      <table class="table" id="docsTable">
+        <thead><tr><th>Fichier</th><th>Type</th><th>Taille</th><th>Pages</th><th>Chunks</th><th>Indexé</th><th>Modifié</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="empty" id="docsEmpty" hidden>Aucun document. Ajoute des fichiers ci-dessus.</p>
+    </section>
+
+    <!-- ===== Réindexation ===== -->
+    <section class="panel" data-panel="index" hidden>
+      <div class="panel-head">
+        <div>
+          <h2>Réindexation</h2>
+          <p class="sub">Reconstruit l'index BM25 + embeddings, et le graphe de connaissances via Beam (appels LLM, quelques minutes). Le serveur recharge l'index automatiquement à la fin.</p>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn primary" data-reindex="full" type="button">Tout réindexer <small>index + graphe</small></button>
+        <button class="btn" data-reindex="no-graph" type="button">Index seul <small>sans appels LLM</small></button>
+        <button class="btn" data-reindex="graph-only" type="button">Graphe seul <small>via Beam</small></button>
+        <button class="btn danger" id="cancelBtn" type="button" hidden>Annuler</button>
+        <span class="job-state" id="jobState"></span>
+      </div>
+      <pre class="log" id="log" aria-live="polite"></pre>
+    </section>
+
+    <!-- ===== Réglages ===== -->
+    <section class="panel" data-panel="settings" hidden>
+      <div class="panel-head">
+        <div>
+          <h2>Réglages à chaud</h2>
+          <p class="sub">Appliqués immédiatement, sans redémarrage, et conservés dans <code>data/settings.json</code>. Ils priment sur le fichier <code>.env</code>.</p>
+        </div>
+      </div>
+      <form class="form" id="settingsForm">
+        <fieldset class="llm-field">
+          <legend>Modèle de langage</legend>
+          <div class="grid2">
+            <label>Fournisseur
+              <select id="llmPreset">
+                <option value="">— choisir un fournisseur —</option>
+                <option value="reflection">Reflection AI · Beam</option>
+                <option value="openai">OpenAI</option>
+                <option value="groq">Groq</option>
+                <option value="mistral">Mistral</option>
+                <option value="openrouter">OpenRouter</option>
+                <option value="ollama">Ollama (local)</option>
+                <option value="custom">Autre API compatible OpenAI</option>
+              </select>
+              <small>Choisir un fournisseur pré-remplit l'URL et le réglage « raisonnement ». Toute API compatible OpenAI fonctionne.</small>
+            </label>
+            <label>URL de base de l'API
+              <input name="llmBaseUrl" type="url" placeholder="https://…/v1 (API compatible OpenAI)" />
+            </label>
+            <label>Modèle
+              <input name="llmModel" type="text" list="llmModels" placeholder="nom du modèle" autocomplete="off" />
+              <datalist id="llmModels"></datalist>
+              <small><button type="button" class="linklike" id="llmListBtn">Charger la liste des modèles</button> du fournisseur</small>
+            </label>
+            <label>Clé API
+              <input name="llmApiKey" type="password" placeholder="(inchangée)" autocomplete="new-password" />
+              <small>Laisse vide pour conserver la clé actuelle. Stockée dans <code>data/settings.json</code>, jamais renvoyée en clair.</small>
+            </label>
+            <label class="switch-field wide">Raisonnement natif (reasoning_effort / reasoning_content)
+              <span class="switch-row">
+                <input type="checkbox" name="llmReasoning" value="on" class="switch" />
+                <span class="switch-text"><b data-on="Activé" data-off="Désactivé"></b> — à activer seulement si le fournisseur accepte reasoning_effort et renvoie reasoning_content (par exemple Reflection Beam)</span>
+              </span>
+            </label>
+          </div>
+          <div class="actions-row">
+            <button class="btn" type="button" id="llmTestBtn">Tester la connexion <small>un appel court, sans enregistrer</small></button>
+            <span class="job-state" id="llmTestState"></span>
+          </div>
+        </fieldset>
+
+        <div class="grid2">
+          <label>Effort de raisonnement (chat)
+            <select name="reasoningEffort"><option>low</option><option>medium</option><option>high</option><option>xhigh</option><option>max</option></select>
+            <small>low = rapide. Au-delà de medium, les réponses peuvent prendre plusieurs minutes.</small>
+          </label>
+          <label class="switch-field">Juge LLM
+            <span class="switch-row">
+              <input type="checkbox" name="judgeEnabled" value="on" class="switch" />
+              <span class="switch-text"><b data-on="Activé" data-off="Désactivé"></b> — note et compare les réponses après chaque question</span>
+            </span>
+            <small>Désactivé : la section Juge et la bascule « Juge auto » disparaissent de ZakatBot, l'API /api/judge refuse les appels, aucun token n'est dépensé pour le jugement.</small>
+          </label>
+          <label>Effort de raisonnement (juge)
+            <select name="judgeEffort"><option>low</option><option>medium</option><option>high</option><option>xhigh</option><option>max</option></select>
+          </label>
+          <label>Passages récupérés (TOP_K)
+            <input name="topK" type="number" min="1" max="20" />
+          </label>
+          <label>Longueur max de réponse (tokens)
+            <input name="maxTokens" type="number" min="128" max="32000" step="128" />
+          </label>
+          <label>Messages d'historique envoyés
+            <input name="historyLimit" type="number" min="2" max="40" />
+          </label>
+          <label>Chunks envoyés à Beam pour le graphe
+            <input name="graphMaxChunks" type="number" min="10" max="5000" />
+            <small>Plus = graphe plus riche, mais plus d'appels LLM à la réindexation.</small>
+          </label>
+          <fieldset class="wide modes-field">
+            <legend>Moteurs affichés dans ZakatBot</legend>
+            <div class="mode-grid">
+            <label class="mode-card">
+              <input type="radio" name="defaultModes" value="llm,rag,graph" />
+              <span class="mc-body"><span class="mc-dots"><i class="d llm" title="A · LLM seul"></i><i class="d rag" title="B · LLM + RAG"></i><i class="d graph" title="C · LLM + RAG + Graph"></i></span><span class="mc-title">Les trois</span><span class="mc-sub">A · B · C côte à côte, comparaison complète</span></span>
+              <span class="mc-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            </label>
+            <label class="mode-card">
+              <input type="radio" name="defaultModes" value="llm" />
+              <span class="mc-body"><span class="mc-dots"><i class="d llm" title="A · LLM seul"></i></span><span class="mc-title">A seul</span><span class="mc-sub">LLM seul, sans documents</span></span>
+              <span class="mc-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            </label>
+            <label class="mode-card">
+              <input type="radio" name="defaultModes" value="rag" />
+              <span class="mc-body"><span class="mc-dots"><i class="d rag" title="B · LLM + RAG"></i></span><span class="mc-title">B seul</span><span class="mc-sub">LLM + RAG</span></span>
+              <span class="mc-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            </label>
+            <label class="mode-card">
+              <input type="radio" name="defaultModes" value="graph" />
+              <span class="mc-body"><span class="mc-dots"><i class="d graph" title="C · LLM + RAG + Graph"></i></span><span class="mc-title">C seul</span><span class="mc-sub">LLM + RAG + Graph RAG</span></span>
+              <span class="mc-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            </label>
+            <label class="mode-card">
+              <input type="radio" name="defaultModes" value="llm,rag" />
+              <span class="mc-body"><span class="mc-dots"><i class="d llm" title="A · LLM seul"></i><i class="d rag" title="B · LLM + RAG"></i></span><span class="mc-title">A + B</span><span class="mc-sub">LLM seul contre LLM + RAG</span></span>
+              <span class="mc-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            </label>
+            <label class="mode-card">
+              <input type="radio" name="defaultModes" value="llm,graph" />
+              <span class="mc-body"><span class="mc-dots"><i class="d llm" title="A · LLM seul"></i><i class="d graph" title="C · LLM + RAG + Graph"></i></span><span class="mc-title">A + C</span><span class="mc-sub">LLM seul contre LLM + RAG + Graph</span></span>
+              <span class="mc-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            </label>
+            <label class="mode-card">
+              <input type="radio" name="defaultModes" value="rag,graph" />
+              <span class="mc-body"><span class="mc-dots"><i class="d rag" title="B · LLM + RAG"></i><i class="d graph" title="C · LLM + RAG + Graph"></i></span><span class="mc-title">B + C</span><span class="mc-sub">RAG contre RAG + Graph</span></span>
+              <span class="mc-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            </label>
+            </div>
+            <small>Seules les colonnes choisies sont interrogées et jugées ; le juge s'adapte à une, deux ou trois réponses. Appliqué au prochain chargement de ZakatBot.</small>
+          </fieldset>
+          <label class="wide">Mot de passe d'accès au chatbot
+            <input name="accessPassword" type="text" placeholder="(vide = accès libre)" autocomplete="off" />
+          </label>
+        </div>
+        <label class="wide">Prompt système
+          <textarea name="systemPrompt" rows="7"></textarea>
+        </label>
+        <div class="actions-row">
+          <button class="btn primary" type="submit">Enregistrer</button>
+          <button class="btn" type="button" id="resetBtn">Revenir aux valeurs du .env</button>
+          <span class="job-state" id="settingsState"></span>
+        </div>
+      </form>
+    </section>
+
+    <!-- ===== Statistiques ===== -->
+    <section class="panel" data-panel="stats" hidden>
+      <div class="panel-head">
+        <div>
+          <h2>Statistiques</h2>
+          <p class="sub">Depuis le dernier démarrage du serveur (compteurs en mémoire).</p>
+        </div>
+        <button class="btn" id="refreshStats" type="button">Actualiser</button>
+      </div>
+      <div class="tiles" id="tiles"></div>
+      <table class="table" id="statsTable">
+        <thead><tr><th>Mode</th><th>Requêtes</th><th>Erreurs</th><th>Tokens prompt</th><th>Tokens réponse</th><th>dont raisonnement</th><th>Total</th><th>Latence moy.</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <h3>Dernières questions</h3>
+      <ul class="recent" id="recent"></ul>
+    </section>
+  </main>
+
+  <dialog id="pwdDialog">
+    <form method="dialog" id="pwdForm">
+      <h2>Mot de passe admin</h2>
+      <p>Cette page est protégée.</p>
+      <label class="sr-only" for="pwd">Mot de passe</label>
+      <input id="pwd" type="password" placeholder="Mot de passe admin" required />
+      <button type="submit">Entrer</button>
+    </form>
+  </dialog>
+
+  <script src="/admin.js"></script>
+</body>
+</html>

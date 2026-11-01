@@ -1,0 +1,30 @@
+# dépendances et données générées
+node_modules/
+data/
+*.log
+
+# secrets et configuration locale
+.env
+deploy/oracle_chatbot
+deploy/ssh_key
+deploy/ssh_key.pub
+deploy/oracle_chatbot.pub
+deploy/oci_api_key.pem
+deploy/oci_api_key_public.pem
+deploy/oci_fingerprint.txt
+deploy/oci.config
+# scripts propres à un fournisseur cloud (non publiés)
+deploy/oci-retry-launch.py
+deploy/retry-oracle.cmd
+
+# PDF de référence (droits tiers) : récupérés avec deploy/fetch-pdfs.sh
+docs/pdf/
+
+# divers
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyc
+
+# journal interne du projet (non publié)
+journey.md

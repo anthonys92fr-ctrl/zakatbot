@@ -1,0 +1,26 @@
+{
+  "name": "zakatbot",
+  "version": "1.0.0",
+  "description": "ZakatBot : chatbot pédagogique sur la zakat comparant LLM seul, RAG et Graph RAG, avec juge LLM et administration (toute API compatible OpenAI)",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "index": "node scripts/build-index.js",
+    "fetch-pdfs": "bash deploy/fetch-pdfs.sh"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.5.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "ipaddr.js": "^2.2.0",
+    "pdf-parse": "^1.1.1",
+    "undici": "^6.21.3"
+  },
+  "license": "MIT"
+}

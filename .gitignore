@@ -29,3 +29,5 @@ __pycache__/
 # journal interne du projet (non publié)
 journey.md
 AUDIT-SECOPS.md
+deploy/gcloud_key
+deploy/gcloud_key.pub

@@ -49,8 +49,31 @@ const MODES = {
 const app = express();
 // Derrière un reverse proxy (Caddy/Nginx) : TRUST_PROXY=1 dans .env ; sinon req.ip = adresse du socket.
 app.set("trust proxy", process.env.TRUST_PROXY ? Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY : false);
+app.disable("x-powered-by");
+// En-têtes de sécurité (sans dépendance) : CSP stricte (scripts locaux uniquement), pas d'iframe, pas de sniffing, referrer minimal
+app.use((req, res, next) => {
+  res.setHeader("Content-Security-Policy", [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data:",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+  ].join("; "));
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  if (req.secure || req.get("x-forwarded-proto") === "https") res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  next();
+});
 app.use(express.json({ limit: "512kb" }));
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public"), { index: "index.html", etag: true, maxAge: "1h" }));
 
 /** Comparaison à temps constant de deux chaînes. */
 function safeEqual(a, b) {

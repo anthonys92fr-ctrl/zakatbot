@@ -38,13 +38,11 @@ Voir `.env.example`. Les plus utiles : `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_K
 
 Documents du RAG (dépôt, suppression), réindexation avec journal en direct, réglages à chaud (**modèle de langage** : fournisseur compatible OpenAI, URL, modèle, clé API, raisonnement natif, avec test de connexion et liste des modèles ; efforts de raisonnement, TOP_K, prompt système, mot de passe d'accès, **moteurs affichés** : A, B, C, deux à deux ou les trois, **juge LLM on/off**) et statistiques (requêtes, tokens, latences). Sans `ADMIN_PASSWORD`, l'admin n'est accessible qu'en connexion directe depuis la machine elle-même (boucle locale, sans proxy) ; derrière Caddy ou à distance, `ADMIN_PASSWORD` est obligatoire (le script `deploy/setup-vps.sh` en génère un et pose `TRUST_PROXY=1`). Les réglages sont conservés dans `data/settings.json` et priment sur `.env`.
 
-## Déploiement sur un serveur (Ubuntu 24.04)
+## Déploiement sur un serveur
 
-1. Sur le serveur : `sudo bash deploy/setup-vps.sh` (Node 22, Caddy HTTPS, pare-feu, service systemd, `.env` généré avec un mot de passe admin). **Sans nom de domaine**, le site est servi sur `https://<ip-avec-tirets>.sslip.io` (nom gratuit lié à l'IP, certificat valide) et sur `https://<ip>` ; avec ton domaine : `DOMAIN=chat.exemple.fr sudo -E bash deploy/setup-vps.sh`.
-2. Depuis ton PC : `bash deploy/push.sh <ip> [utilisateur-ssh]` (clé SSH privée attendue dans `deploy/ssh_key`, ou `SSH_KEY=/chemin/vers/la/cle`).
-3. Configurer le modèle de langage dans l'admin (`https://…/admin`), ajouter tes documents et lancer une réindexation.
+Guide pas à pas par fournisseur (Oracle Cloud Free Tier, OVH VPS, Google Cloud, Azure, AWS) dans **[DEPLOIEMENT.md](DEPLOIEMENT.md)**. En résumé : une VM Ubuntu 24.04 avec les ports 80/443 ouverts, `sudo bash deploy/setup-vps.sh` sur le serveur (Node 22, Caddy HTTPS, pare-feu, service, mot de passe admin généré), puis `bash deploy/push.sh <ip> <utilisateur>` depuis ton PC. Sans nom de domaine, le site est servi sur `https://<ip>` et `https://<ip-avec-tirets>.sslip.io` (certificat valide).
 
-Sur une machine modeste (1 Go de RAM), mettre `EMBEDDINGS=off` dans `.env` ou construire l'index en local et copier `data/` sur le serveur.
+Sécurité : voir [SECURITY.md](SECURITY.md).
 
 ## API
 

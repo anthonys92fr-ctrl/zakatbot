@@ -31,3 +31,4 @@ journey.md
 AUDIT-SECOPS.md
 deploy/gcloud_key
 deploy/gcloud_key.pub
+.claude/

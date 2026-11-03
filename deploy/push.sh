@@ -18,7 +18,7 @@ esac
 echo "    $STAGE"
 
 echo "==> Envoi des fichiers vers $USER@$IP"
-rsync -az --delete \n  --exclude 'node_modules' --exclude '.git' --exclude '.env' --exclude 'data' --exclude '__pycache__' --exclude '*.log' --exclude '*.pem' --exclude 'journey.md' \n  --include 'deploy/' --include 'deploy/setup-vps.sh' --include 'deploy/fetch-pdfs.sh' --exclude 'deploy/*' \n  -e "ssh -i $KEY -p $PORT_SSH -o StrictHostKeyChecking=accept-new"   "$HERE/" "$USER@$IP:$STAGE/"
+rsync -az --delete \n  --exclude 'node_modules' --exclude '.git' --exclude '.env' --exclude 'data' --exclude '__pycache__' --exclude '*.log' --exclude '*.pem' --exclude 'journey.md' \n  --include 'deploy/' --include 'deploy/setup-vps.sh' --include 'deploy/fetch-pdfs.sh' --exclude 'deploy/*' \n  -e "ssh -i $KEY -p $PORT_SSH -o StrictHostKeyChecking=accept-new" \n  "$HERE/" "$USER@$IP:$STAGE/"
 
 echo "==> Installation côté VM"
 ssh -i "$KEY" -p "$PORT_SSH" "$USER@$IP" "bash -s -- $(printf %q "$STAGE")" <<'EOF'
